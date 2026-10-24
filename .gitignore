@@ -1,0 +1,28 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Environment variables & secrets (CRITICAL: NEVER COMMIT .env)
+.env
+*.env
+!*.env.example
+
+# macOS metadata
+.DS_Store
+
+# Outputs & audio
+output_replies/
+*.wav
+*.mp3
+tickets_created.csv
