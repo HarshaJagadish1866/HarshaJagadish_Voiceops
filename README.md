@@ -53,7 +53,7 @@ Incoming Audio (.wav)
 
 ### 1. Prerequisites
 - **Python**: 3.10+ (tested on Python 3.13)
-- An active Gnani API Key (obtain from [vachana.ai](https://vachana.ai))
+- An active Gnani API Key (generate at [app.gnani.ai/voice](https://app.gnani.ai/voice))
 
 ### 2. Installation
 
@@ -73,7 +73,7 @@ cp .env.example .env
 
 Open `.env` and configure:
 ```ini
-GNANI_API_KEY="your_gnani_vachana_api_key_here"
+GNANI_API_KEY="your_gnani_api_key_here"
 ```
 
 *(Note: API keys are loaded dynamically via `python-dotenv` and are never hardcoded).*
