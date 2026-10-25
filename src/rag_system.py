@@ -143,6 +143,13 @@ OUT_OF_SCOPE_MARKERS: List[str] = [
     "store near me",
     "pick up from store",
     "pickup from a store",
+    "physical store",
+    "drop off at",
+    "drop off the return",
+    "drop off",
+    "new york",
+    "united states",
+    "usa",
     "कोच्चि",
     "kochi",
     "physical shop",
@@ -696,16 +703,38 @@ class ZentroMartRAGAgent:
         if any(w in q_lower for w in ["collection free", "free collection", "torn", "phata"]):
             return "Under [RET-6] & [DWM-2]: Reverse pickup is free (no fee / waived / no charge) for damaged, defective, or wrong items. Report within 48 hours."
 
-        # 9. Clean full chunk text extraction fallback
-        clean_lines = [
-            l.strip()
-            for l in primary.content.splitlines()
-            if l.strip() and not l.startswith("[SECTION-ID]")
-            and not l.startswith("Status:") and not l.startswith("Effective From:")
-            and not l.startswith("Document:")
-        ]
-        body_text = "\n".join(clean_lines[:15])
-        return f"Under [{primary.section_id}] ({primary.doc_title}):\n{body_text}"
+        # 11. General category return window questions (without specific product SKU)
+        if any(w in q_lower for w in ["return window", "return policy", "how many days", "kitne din", "window for"]) or "return" in q_lower:
+            if "electronic" in q_lower or "gadget" in q_lower or "appliance" in q_lower:
+                return "Under [RET-2] & [RET-3]: The return window for electronics and accessories is 7 days from the delivery date."
+            if "fashion" in q_lower or "cloth" in q_lower or "shoe" in q_lower or "footwear" in q_lower:
+                return "Under [RET-2] & [RET-8]: Clothing, footwear and bags have a 15-day return window, or 30 days during festive sales."
+            if "book" in q_lower or "stationery" in q_lower:
+                return "Under [RET-2]: Books and stationery have a 10-day return window from the delivery date."
+            if "home" in q_lower or "kitchen" in q_lower or "furniture" in q_lower:
+                return "Under [RET-2]: Home, kitchen and furniture items have a 10-day return window from the delivery date."
+
+        # 12. General Reverse Pickup Fee questions (RET-6)
+        if any(w in q_lower for w in ["pickup fee", "reverse pickup", "fee for return", "return fee", "how much is the fee", "pickup charge", "shipping fee"]):
+            return "Under [RET-6]: A reverse pickup fee of ₹49 applies to change-of-mind returns. The fee is waived for ZentroMart Plus members or for damaged items."
+
+        # 13. Conversational Clean Full Chunk Text Extraction Fallback (No markdown headers, tables, or bullet lists)
+        clean_sentences = []
+        for l in primary.content.splitlines():
+            l_str = l.strip()
+            if not l_str:
+                continue
+            # Strip headers, markdown table rows, bullet points, and metadata tags
+            if l_str.startswith("#") or l_str.startswith("|") or l_str.startswith("-") or l_str.startswith("*"):
+                continue
+            if l_str.startswith("[SECTION-ID]") or l_str.startswith("Status:") or l_str.startswith("Effective From:") or l_str.startswith("Document:"):
+                continue
+            clean_sentences.append(l_str)
+
+        body_text = " ".join(clean_sentences[:2])
+        if not body_text:
+            body_text = primary.content.strip().split("\n")[-1]
+        return f"Under [{primary.section_id}] ({primary.doc_title}): {body_text}"
 
 
 

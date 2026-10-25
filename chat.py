@@ -104,7 +104,7 @@ def main():
 
     while True:
         try:
-            user_input = input("\nYou: ").strip()
+            user_input = input("\nYou: ").strip("`'\" \t\r\n")
         except (KeyboardInterrupt, EOFError):
             print("\nGoodbye! Have a great day.")
             break
