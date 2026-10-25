@@ -22,6 +22,13 @@ gnani_log.disabled = True
 for h in gnani_log.handlers:
     gnani_log.removeHandler(h)
 
+# Path resolution for standalone, VS Code, and repository execution
+_HERE = Path(__file__).resolve().parent
+_SRC = _HERE / "src"
+for _p in [str(_HERE), str(_SRC), str(Path.cwd()), str(Path.cwd() / "src")]:
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
 # Load environment fresh
 try:
     from dotenv import load_dotenv
@@ -29,8 +36,32 @@ try:
 except ImportError:
     pass
 
-from conversation_agent import ConversationSession, ZentroMartAgent
-from voice_agent import format_text_for_tts, get_gnani_api_key
+if not os.getenv("GNANI_API_KEY"):
+    for env_cand in [
+        _HERE / ".env",
+        Path.cwd() / ".env",
+        _HERE.parent / "suppose delete" / ".env",
+        _HERE.parent / "Capstone_Project_Dataset_FTTT_2026" / "suppose delete" / ".env",
+        Path("/Users/harsha_jagadish/Desktop/Capstone_Project_Dataset_FTTT_2026/suppose delete/.env"),
+    ]:
+        if env_cand.exists():
+            with open(env_cand, encoding="utf-8") as _f:
+                for _line in _f:
+                    _line = _line.strip()
+                    if _line and not _line.startswith("#") and "=" in _line:
+                        _k, _v = _line.split("=", 1)
+                        _k = _k.strip()
+                        _v = _v.strip().strip("'\"")
+                        if _k not in os.environ:
+                            os.environ[_k] = _v
+            break
+
+try:
+    from conversation_agent import ConversationSession, ZentroMartAgent
+    from voice_agent import format_text_for_tts, get_gnani_api_key
+except ImportError:
+    from src.conversation_agent import ConversationSession, ZentroMartAgent
+    from src.voice_agent import format_text_for_tts, get_gnani_api_key
 
 def main():
     print("=" * 70)
