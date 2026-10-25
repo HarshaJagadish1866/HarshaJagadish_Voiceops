@@ -206,6 +206,7 @@ class KnowledgeBaseChunker:
                 Path.cwd().parent / "suppose delete" / "kb",
                 Path(__file__).resolve().parent.parent / "kb",
                 Path(__file__).resolve().parent.parent / "suppose delete" / "kb",
+                Path.home() / "Desktop" / "Capstone_Project_Dataset_FTTT_2026" / "suppose delete" / "kb",
             ]:
                 if fallback.exists():
                     self.kb_dir = fallback

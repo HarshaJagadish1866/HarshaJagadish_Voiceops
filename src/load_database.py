@@ -40,6 +40,7 @@ def load_raw_tables(data_dir: Union[str, Path] = "data") -> Dict[str, pd.DataFra
             Path.cwd().parent / "suppose delete" / "data",
             Path(__file__).resolve().parent.parent / "data",
             Path(__file__).resolve().parent.parent / "suppose delete" / "data",
+            Path.home() / "Desktop" / "Capstone_Project_Dataset_FTTT_2026" / "suppose delete" / "data",
         ]:
             if fallback.exists():
                 data_path = fallback
