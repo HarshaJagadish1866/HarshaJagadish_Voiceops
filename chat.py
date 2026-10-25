@@ -53,6 +53,13 @@ def main():
     if api_key:
         try:
             from gnani.tts import GnaniTTSClient
+            # Silence Gnani SDK internal loggers completely
+            gnani_log = logging.getLogger("gnani")
+            gnani_log.handlers.clear()
+            gnani_log.setLevel(logging.CRITICAL)
+            gnani_log.disabled = True
+            gnani_log.propagate = False
+
             tts_client = GnaniTTSClient(api_key=api_key)
             voice_enabled = True
             print("🔊 Gnani Voice TTS: ENABLED (Agent will speak replies aloud)")
