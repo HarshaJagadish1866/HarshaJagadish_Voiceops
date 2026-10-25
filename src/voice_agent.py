@@ -103,13 +103,18 @@ def format_text_for_tts(text: str) -> str:
     """
     clean = text
 
-    # 1. Clean markdown headers, bold, italics, bullets, inline code
+    # 1. Clean citation prefixes (e.g. 'Under [RET-6] (Returns policy):' or 'Under [RET-2] & [RET-3]:')
+    clean = re.sub(r"^Under\s+[^:]+:\s*", "", clean, flags=re.IGNORECASE)
+    clean = re.sub(r"Under\s+\[[^\]]+\](\s*&\s*\[[^\]]+\])*:\s*", "", clean, flags=re.IGNORECASE)
+    clean = re.sub(r"\([^)]*policy[^)]*\):\s*", "", clean, flags=re.IGNORECASE)
+    clean = re.sub(r"\[([A-Z0-9\.\-]+)\]", "", clean)  # Remove [SECTION-ID] tags like [DEL-4]
+
+    # 2. Clean markdown headers, bold, italics, bullets, inline code
     clean = re.sub(r"#{1,6}\s*", "", clean)
     clean = re.sub(r"^\s*[-*•]\s+", "", clean, flags=re.MULTILINE)
     clean = re.sub(r"\*\*([^*]+)\*\*", r"\1", clean)
     clean = re.sub(r"\*([^*]+)\*", r"\1", clean)
     clean = re.sub(r"`([^`]+)`", r"\1", clean)
-    clean = re.sub(r"\[([A-Z0-9\.\-]+)\]", "", clean)  # Remove [SECTION-ID] tags like [DEL-4]
 
     # 2. Currency symbol expansion: ₹49 -> 49 rupees, ₹10,000 -> 10000 rupees
     clean = re.sub(r"₹\s*([0-9,]+)", r"\1 rupees", clean)

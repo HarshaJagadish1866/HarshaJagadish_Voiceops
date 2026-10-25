@@ -444,7 +444,7 @@ class ZentroMartRAGAgent:
 
         return True
 
-    def answer_query(self, question: str, top_k: int = 4, verbose: bool = True) -> Dict[str, Any]:
+    def answer_query(self, question: str, top_k: int = 4, verbose: bool = False) -> Dict[str, Any]:
         """Answers user question, strictly tracking used document sections and maintaining grounding."""
         retrieved = self.index.search(question, top_k=top_k)
 

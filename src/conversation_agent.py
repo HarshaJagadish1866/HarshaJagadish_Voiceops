@@ -169,8 +169,9 @@ class ZentroMartAgent:
     def handle_turn(self, customer_message: str, session: ConversationSession) -> str:
         """Processes one turn of the conversation, maintains state, calls tools, and replies."""
         session.turn_count += 1
-        msg = customer_message.strip()
-        msg_lower = msg.lower()
+        clean_msg = customer_message.strip("`'\" \t\r\n")
+        msg = clean_msg
+        msg_lower = clean_msg.lower()
 
         # Update detected language
         lang = detect_language(msg)
@@ -203,8 +204,6 @@ class ZentroMartAgent:
             ]
         )
 
-        clean_msg = msg.strip("`'\" \t\r\n")
-
         # ---------------------------------------------------------
         # Turn 1: Check if general question vs opening greeting
         # ---------------------------------------------------------
@@ -216,12 +215,15 @@ class ZentroMartAgent:
             ):
                 # Answer general policy inquiry directly via RAG
                 rag_res = self.rag.answer_query(clean_msg)
+                ans = rag_res["answer"]
+                ans = re.sub(r"^Under\s+[^:]+:\s*", "", ans, flags=re.IGNORECASE)
+                ans = re.sub(r"^Under\s*\[[^\]]+\]:\s*", "", ans, flags=re.IGNORECASE)
                 intro_prefix = (
                     "Hello! I am ZentroMart's AI support assistant. "
                     if session.language == "en"
                     else "नमस्ते! मैं ZentroMart का एआई सपोर्ट असिस्टेंट हूँ। "
                 )
-                reply = f"{intro_prefix}{rag_res['answer']}"
+                reply = f"{intro_prefix}{ans}"
                 session.history.append({"role": "user", "content": msg})
                 session.history.append({"role": "assistant", "content": reply})
                 return reply
@@ -238,7 +240,10 @@ class ZentroMartAgent:
         if not session.is_verified and not session.verification_failed:
             if not is_order_specific_action and not self._extract_verification_value(clean_msg, exclude_order_id=session.order_id):
                 rag_res = self.rag.answer_query(clean_msg)
-                reply = rag_res["answer"]
+                ans = rag_res["answer"]
+                ans = re.sub(r"^Under\s+[^:]+:\s*", "", ans, flags=re.IGNORECASE)
+                ans = re.sub(r"^Under\s*\[[^\]]+\]:\s*", "", ans, flags=re.IGNORECASE)
+                reply = ans
                 session.history.append({"role": "user", "content": msg})
                 session.history.append({"role": "assistant", "content": reply})
                 return reply
@@ -390,6 +395,17 @@ class ZentroMartAgent:
         msg_lower = msg.lower()
         order = session.order_data or {}
         lang = session.language
+
+        # ---------------------------------------------------------
+        # 0. Out-of-Scope & Physical Store Policy Check
+        # (e.g. drop off return at physical store in New York, US returns, physical shop)
+        # ---------------------------------------------------------
+        if any(w in msg_lower for w in ["store", "drop off", "physical", "new york", "united states", "usa", "kochi", "shop"]):
+            rag_res = self.rag.answer_query(msg)
+            ans = rag_res["answer"]
+            ans = re.sub(r"^Under\s+[^:]+:\s*", "", ans, flags=re.IGNORECASE)
+            ans = re.sub(r"^Under\s*\[[^\]]+\]:\s*", "", ans, flags=re.IGNORECASE)
+            return ans
 
         # ---------------------------------------------------------
         # 1. Escalation Trigger: Customer Asks for Human (ESC-1 #6)
