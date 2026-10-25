@@ -587,6 +587,11 @@ class ZentroMartAgent:
         # 9. Return Eligibility & Window Check (RET-2, RET-6, RET-8, PLS-2)
         # ---------------------------------------------------------
         if any(w in msg_lower for w in ["return", "लौटा", "wapas", "वापस"]):
+            # Check if this is a general policy question (e.g. drop off, physical store, how to return)
+            # rather than checking return eligibility for an item in the verified order
+            if any(w in msg_lower for w in ["store", "drop off", "physical", "new york", "how do i return", "how to return", "policy"]):
+                rag_res = self.rag.answer_query(msg)
+                return rag_res["answer"]
             return self._calculate_return_eligibility(session, msg)
 
         # ---------------------------------------------------------
