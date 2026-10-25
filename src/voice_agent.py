@@ -18,7 +18,6 @@ Features:
 import os
 from pathlib import Path
 import re
-import sys
 from typing import Any, Dict, Optional, Union
 
 try:
@@ -38,19 +37,9 @@ except ImportError:
                     if _k not in os.environ:
                         os.environ[_k] = _v
 
-_HERE = Path(__file__).resolve().parent
-_ROOT = _HERE.parent if _HERE.name == "src" else _HERE
-for _p in [str(_HERE), str(_ROOT)]:
-    if _p not in sys.path:
-        sys.path.insert(0, _p)
-
 from gnani.stt import GnaniSTTClient
 from gnani.tts import GnaniTTSClient
-
-try:
-    from conversation_agent import ConversationSession, ZentroMartAgent
-except ImportError:
-    from src.conversation_agent import ConversationSession, ZentroMartAgent
+from conversation_agent import ConversationSession, ZentroMartAgent
 
 
 def get_gnani_api_key() -> str:
@@ -103,13 +92,16 @@ def format_text_for_tts(text: str) -> str:
     """
     clean = text
 
-    # 1. Clean markdown headers, bold, italics, bullets, inline code
+    # 1. Clean markdown headers, bold, italics, bullets, inline code, and citation brackets
     clean = re.sub(r"#{1,6}\s*", "", clean)
     clean = re.sub(r"^\s*[-*•]\s+", "", clean, flags=re.MULTILINE)
     clean = re.sub(r"\*\*([^*]+)\*\*", r"\1", clean)
     clean = re.sub(r"\*([^*]+)\*", r"\1", clean)
     clean = re.sub(r"`([^`]+)`", r"\1", clean)
-    clean = re.sub(r"\[([A-Z0-9\.\-]+)\]", "", clean)  # Remove [SECTION-ID] tags like [DEL-4]
+    clean = re.sub(r"\bUnder\s*\[[A-Z0-9\.\-,\s/&]+\]\s*(?:\([^)]*\))?\s*:\s*", "", clean)  # "Under [RET-2] & [RET-3]: " -> ""
+    clean = re.sub(r"\[([A-Z0-9\.\-]+)\]", "", clean)  # Remove remaining [SECTION-ID] tags like [DEL-4]
+    clean = re.sub(r"\bUnder\s*:\s*", "", clean)
+    clean = re.sub(r"\bUnder\s*&\s*:\s*", "", clean)
 
     # 2. Currency symbol expansion: ₹49 -> 49 rupees, ₹10,000 -> 10000 rupees
     clean = re.sub(r"₹\s*([0-9,]+)", r"\1 rupees", clean)

@@ -28,32 +28,13 @@ import re
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pandas as pd
-import sys
-
-_HERE = Path(__file__).resolve().parent
-_ROOT = _HERE.parent if _HERE.name == "src" else _HERE
-for _p in [str(_HERE), str(_ROOT)]:
-    if _p not in sys.path:
-        sys.path.insert(0, _p)
 
 # Import mock tools from tools/
-try:
-    from tools import create_ticket, lookup_order
-except ImportError:
-    try:
-        from src.tools import create_ticket, lookup_order
-    except ImportError:
-        # Fallback if tools directory is not present in clean repo
-        create_ticket = None
-        lookup_order = None
+from tools import create_ticket, lookup_order
 
 # Import RAG system and business day calendar
-try:
-    from rag_system import ZentroMartRAGAgent
-    from load_database import ZentroMartDatabase, TODAY, TODAY_DATE
-except ImportError:
-    from src.rag_system import ZentroMartRAGAgent
-    from src.load_database import ZentroMartDatabase, TODAY, TODAY_DATE
+from rag_system import ZentroMartRAGAgent
+from load_database import ZentroMartDatabase, TODAY, TODAY_DATE
 
 # =====================================================================
 # Strict System Prompt: Identity Gatekeeper & Conversational Guardrails
@@ -62,7 +43,7 @@ SYSTEM_PROMPT: str = """You are an AI customer support assistant for ZentroMart,
 Today is 20 October 2026.
 
 === SPEECH & AUDIO GUIDELINES (FOR TTS) ===
-Write for the ear. Keep responses to 1-2 short sentences. Do not use bullet points, bold text, or markdown formatting.
+You are a spoken voice assistant. You MUST synthesize the retrieved facts into a natural, conversational reply. DO NOT output raw markdown, headers, bullet points, or citation brackets. Keep every response to 1 or 2 short, simple sentences optimized for speech.
 
 === STRICT IDENTITY GATEKEEPER RULE ===
 
@@ -192,14 +173,50 @@ class ZentroMartAgent:
         if extracted_oid:
             session.order_id = extracted_oid
 
+        # Check if the user is asking a general policy or informational question
+        is_order_specific_action = bool(extracted_oid) or any(
+            w in msg_lower for w in [
+                "my order", "mera order", "mere order", "apna order",
+                "where is", "hasn't arrived", "not arrived", "track",
+                "cancel my", "cancel this", "cancel it", "cancel order", "cancel the order",
+                "compensation", "give me 500", "500", "voucher", "ticket",
+                "replacement", "approve replacement", "damaged tv", "damage report"
+            ]
+        )
+
         # ---------------------------------------------------------
-        # Turn 1: Opening Greeting & Self-Introduction as AI assistant
+        # Turn 1: Check if general question vs opening greeting
         # ---------------------------------------------------------
         if session.turn_count == 1:
+            if not is_order_specific_action and len(msg.split()) > 3:
+                # Answer general policy inquiry directly via RAG
+                rag_res = self.rag.answer_query(msg)
+                intro_prefix = (
+                    "Hello! I am ZentroMart's AI support assistant. "
+                    if session.language == "en"
+                    else "नमस्ते! मैं ZentroMart का एआई सपोर्ट असिस्टेंट हूँ। "
+                )
+                reply = f"{intro_prefix}{rag_res['answer']}"
+                session.history.append({"role": "user", "content": msg})
+                session.history.append({"role": "assistant", "content": reply})
+                return reply
+
             reply = self._build_turn1_greeting(session, msg)
             session.history.append({"role": "user", "content": msg})
             session.history.append({"role": "assistant", "content": reply})
             return reply
+
+        # ---------------------------------------------------------
+        # Unverified Turn: If user is asking a general policy question, answer via RAG!
+        # Only gatekeeper when the user asks about a specific order, cancellation, or compensation.
+        # ---------------------------------------------------------
+        if not session.is_verified and not session.verification_failed:
+            if not is_order_specific_action and not self._extract_verification_value(msg, exclude_order_id=session.order_id):
+                rag_res = self.rag.answer_query(msg)
+                reply = rag_res["answer"]
+                session.history.append({"role": "user", "content": msg})
+                session.history.append({"role": "assistant", "content": reply})
+                return reply
 
         # ---------------------------------------------------------
         # Turn 2: Order ID provided but Identity NOT yet verified
@@ -629,6 +646,11 @@ class ZentroMartAgent:
         order = session.order_data or {}
         lang = session.language
         items = order.get("items") or []
+
+        # If user is asking a general policy question without a specific verified order, answer via RAG
+        if not order or not items:
+            rag_res = self.rag.answer_query(msg)
+            return rag_res["answer"]
 
         # Find matching item if mentioned, else first item
         target_item = items[0] if items else {}
