@@ -32,6 +32,18 @@ def load_raw_tables(data_dir: Union[str, Path] = "data") -> Dict[str, pd.DataFra
         Dictionary mapping table name to raw DataFrame.
     """
     data_path = Path(data_dir)
+    if not data_path.exists():
+        for fallback in [
+            Path.cwd() / "data",
+            Path.cwd() / "suppose delete" / "data",
+            Path.cwd().parent / "data",
+            Path.cwd().parent / "suppose delete" / "data",
+            Path(__file__).resolve().parent.parent / "data",
+            Path(__file__).resolve().parent.parent / "suppose delete" / "data",
+        ]:
+            if fallback.exists():
+                data_path = fallback
+                break
     files = [
         "customers.csv",
         "orders.csv",
