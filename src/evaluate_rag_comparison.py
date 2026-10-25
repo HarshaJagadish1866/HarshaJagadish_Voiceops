@@ -168,6 +168,18 @@ def run_evaluation(
     """Executes the dual evaluation (Prompt-Only vs. With RAG) and exports results."""
     q_path = Path(questions_csv)
     if not q_path.exists():
+        for fallback in [
+            Path.cwd() / "practice" / "questions.csv",
+            Path.cwd() / "suppose delete" / "practice" / "questions.csv",
+            Path.cwd().parent / "practice" / "questions.csv",
+            Path.cwd().parent / "suppose delete" / "practice" / "questions.csv",
+            Path(__file__).resolve().parent.parent / "practice" / "questions.csv",
+            Path(__file__).resolve().parent.parent / "suppose delete" / "practice" / "questions.csv",
+        ]:
+            if fallback.exists():
+                q_path = fallback
+                break
+    if not q_path.exists():
         raise FileNotFoundError(f"Evaluation questions file not found at: {q_path}")
 
     with open(q_path, encoding="utf-8") as f:
